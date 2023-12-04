@@ -49,10 +49,11 @@ class Lexer:
         return tokens  
 
     def tokenize_variable(self):
-        start = self.position
-        while self.position < len(self.input) and self.input[self.position].isalpha():
-            self.position += 1
-        return Token('VARIABLE', self.input[start:self.position])
+       start = self.position
+       while self.position < len(self.input) and self.input[self.position].isalpha():
+           self.position += 1
+       token_type = 'TYPE' if self.input[start:self.position] in ['int', 'float', 'char'] else 'VARIABLE'
+       return Token(token_type, self.input[start:self.position])
 
     def tokenize_integer(self):
         start = self.position
@@ -198,13 +199,27 @@ class Parser:
         return Node('Program', children=statements)# I don't know if this is the best way to do it, but it passed the tests.
 
     def parse_statement(self):
-        # This method is used to parse a statement
-        # If  next token is a variable, parses an assignment
-        if self.peek().type == 'VARIABLE':
-            return self.parse_assignment()
-        else:
-            # If  next token is not a variable, raises an exception
-            raise Exception(f"Syntax error: invalid statement {self.peek().type}")
+       # If the next token is a type, parse a declaration
+       if self.peek().type == 'TYPE':
+           return self.parse_declaration()
+       # If the next token is a variable, parse an assignment
+       elif self.peek().type == 'VARIABLE':
+           return self.parse_assignment()
+       else:
+           raise Exception(f"Syntax error: invalid statement {self.peek().type}")
+       
+    def parse_declaration(self):
+       type_token = self.consume('TYPE') # Consume the type
+       variable = self.consume('VARIABLE') # Consume the variable
+       self.consume('ASSIGN') # Consume the equals sign
+       expression = self.parse_expression() # Parse the expression on the right of the equals sign
+       if self.position < len(self.tokens) and self.peek().type == 'SEMICOLON':
+           self.consume('SEMICOLON') # Consume the semicolon
+       else:
+           raise Exception("Syntax error: unexpected end of input")
+       # Return a new declaration node with the type, variable, and expression as children
+       return Node('DeclarationStatement', value=type_token.value, children=[variable, expression])
+
 
     def parse_assignment(self):
         # Parses an assignment, which is a variable followed by an equals sign and an expression
